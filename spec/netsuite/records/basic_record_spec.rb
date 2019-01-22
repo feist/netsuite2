@@ -37,6 +37,7 @@ describe 'basic records' do
       NetSuite::Records::ContactRole,
       NetSuite::Records::PaymentItem,
       NetSuite::Records::CreditMemo,
+      NetSuite::Records::LotNumberedInventoryItem,
       NetSuite::Records::InventoryItem,
       NetSuite::Records::DescriptionItem,
       NetSuite::Records::SubtotalItem,

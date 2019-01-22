@@ -174,6 +174,7 @@ module NetSuite
     autoload :InventoryAssignmentList,          'netsuite/records/inventory_assignment_list'
     autoload :InventoryDetail,                  'netsuite/records/inventory_detail'
     autoload :InventoryItem,                    'netsuite/records/inventory_item'
+    autoload :LotNumberedInventoryItem,         'netsuite/records/lot_numbered_inventory_item'
     autoload :InventoryNumber,                  'netsuite/records/inventory_number'
     autoload :InventoryNumberLocations,         'netsuite/records/inventory_number_locations'
     autoload :InventoryNumberLocationsList,     'netsuite/records/inventory_number_locations_list'
