@@ -15,14 +15,12 @@ module NetSuite
       fields :accounting_book_detail_list,
         :available_to_partners,
         :cost,
-        :purchase_unit,
         :cost_estimate,
         :cost_estimate_type,
         :cost_estimate_units,
         :created_date,
         :display_name,
         :enforce_min_qty_internally,
-        :expense_account,
         :include_children,
         :is_fulfillable,
         :is_gco_compliant,
@@ -52,7 +50,7 @@ module NetSuite
 
       record_refs :billing_schedule, :klass, :cost_category, :custom_form, :deferred_revenue_account,
                   :department, :income_account, :issue_product, :location, :matrix_type, :rev_rec_schedule,
-                  :units_type, :sales_tax_code, :sale_unit, :tax_schedule, :parent
+                  :units_type, :sales_tax_code, :sale_unit, :tax_schedule, :parent, :purchase_unit, :expense_account
 
       field :custom_field_list, CustomFieldList
       # :pricing_matrix,
