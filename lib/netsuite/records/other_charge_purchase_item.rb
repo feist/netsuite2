@@ -15,7 +15,7 @@ module NetSuite
       fields :accounting_book_detail_list,
         :available_to_partners,
         :cost,
-        :purchase_units,
+        :purchase_unit,
         :cost_estimate,
         :cost_estimate_type,
         :cost_estimate_units,
