@@ -21,6 +21,7 @@ module NetSuite
         :created_date,
         :display_name,
         :enforce_min_qty_internally,
+        :generate_accruals,
         :include_children,
         :is_fulfillable,
         :is_gco_compliant,
