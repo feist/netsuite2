@@ -1,3 +1,3 @@
 module NetSuite
-  VERSION = '0.8.3.feist.6'
+  VERSION = '0.8.3.feist.7'
 end
