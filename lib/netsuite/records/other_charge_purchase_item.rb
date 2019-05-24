@@ -37,6 +37,7 @@ module NetSuite
         :prices_include_tax,
         :pricing_group,
         :purchase_tax_code,
+        :purchase_description,
         :quantity_pricing_schedule,
         :rate,
         :sales_description,
