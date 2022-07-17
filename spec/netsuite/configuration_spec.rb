@@ -14,6 +14,20 @@ describe NetSuite::Configuration do
       config.reset!
       expect(config.attributes).to be_empty
     end
+
+    it 'ensures that attributes are not shared between threads' do
+      config.attributes[:blah] = 'something'
+      expect(config.attributes[:blah]).to eq('something')
+
+      thread = Thread.new {
+        config.attributes[:blah] = 'something_else'
+        expect(config.attributes[:blah]).to eq('something_else')
+      }
+
+      thread.join
+
+      expect(config.attributes[:blah]).to eq('something')
+    end
   end
 
   describe '#filters' do
@@ -29,10 +43,12 @@ describe NetSuite::Configuration do
   end
 
   describe '#connection' do
+    EXAMPLE_ENDPOINT = 'https://1023.suitetalk.api.netsuite.com/services/NetSuitePort_2020_2'
     before(:each) do
       # reset clears out the password info
       config.email       'me@example.com'
       config.password    'me@example.com'
+      config.endpoint    EXAMPLE_ENDPOINT
       config.account     1023
       config.wsdl        "my_wsdl"
       config.api_version "2012_2"
@@ -56,6 +72,19 @@ describe NetSuite::Configuration do
       config.connection
 
       expect(config).to have_received(:cached_wsdl)
+    end
+
+    it 'sets the endpoint on the Savon client' do
+      # this is ugly/brittle, but it's hard to see how else to test this
+      savon_configs = config.connection.globals.instance_eval {@options}
+      expect(savon_configs.fetch(:endpoint)).to eq(EXAMPLE_ENDPOINT)
+    end
+
+    it 'handles a nil endpoint' do
+      config.endpoint = nil
+      # this is ugly/brittle, but it's hard to see how else to test this
+      savon_configs = config.connection.globals.instance_eval {@options}
+      expect(savon_configs.fetch(:endpoint)).to eq(nil)
     end
   end
 
@@ -163,6 +192,23 @@ describe NetSuite::Configuration do
         expect(config.wsdl_cache).to be_empty
         expect( config.cached_wsdl ).to eq nil
       end
+    end
+  end
+
+  describe '#endpoint' do
+    it 'can be set with endpoint=' do
+      config.endpoint = 42
+      expect(config.endpoint).to eq(42)
+    end
+
+    it 'can be set with just endpoint(value)' do
+      config.endpoint(42)
+      expect(config.endpoint).to eq(42)
+    end
+
+    it 'supports nil endpoints' do
+      config.endpoint = nil
+      expect(config.endpoint).to eq(nil)
     end
   end
 
@@ -326,15 +372,11 @@ describe NetSuite::Configuration do
 
   describe "#credentials" do
     context "when none are defined" do
-      skip "should properly create the auth credentials" do
-
-      end
+      skip "should properly create the auth credentials"
     end
 
     context "when they are defined" do
-      it "should properly replace the default auth credentials" do
-
-      end
+      skip "should properly replace the default auth credentials"
     end
   end
 
@@ -368,6 +410,104 @@ describe NetSuite::Configuration do
 
     it 'sets logger' do
       expect(config.logger).to eql(logger)
+    end
+  end
+
+  describe "#log" do
+    it 'allows a file path to be set as the log destination' do
+      file_path = Tempfile.new('tmplog').path
+      config.log = file_path
+      config.logger.info "foo"
+
+      log_contents = open(file_path).read
+      expect(log_contents).to include("foo")
+    end
+
+    it 'allows an IO device to bet set as the log destination' do
+      stream = StringIO.new
+      config.log = stream
+      config.logger.info "foo"
+
+      expect(stream.string).to include("foo")
+    end
+  end
+
+  describe '#log_level' do
+    it 'defaults to :debug' do
+      expect(config.log_level).to eq(:debug)
+    end
+
+    it 'can be initially set to any log level' do
+      config.log_level(:info)
+
+      expect(config.log_level).to eq(:info)
+    end
+
+    it 'can override itself' do
+      config.log_level = :info
+
+      expect(config.log_level).to eq(:info)
+
+      config.log_level(:debug)
+
+      expect(config.log_level).to eq(:debug)
+    end
+  end
+
+  describe '#log_level=' do
+    it 'can set the initial log_level' do
+      config.log_level = :info
+
+      expect(config.log_level).to eq(:info)
+    end
+
+    it 'can override a previously set log level' do
+      config.log_level = :info
+
+      expect(config.log_level).to eq(:info)
+
+      config.log_level = :debug
+
+      expect(config.log_level).to eq(:debug)
+    end
+  end
+
+  describe 'timeouts' do
+    it 'has defaults' do
+      expect(config.read_timeout).to eql(60)
+      expect(config.open_timeout).to be_nil
+    end
+
+    it 'sets timeouts' do
+      config.read_timeout = 100
+      config.open_timeout = 60
+
+      expect(config.read_timeout).to eql(100)
+      expect(config.open_timeout).to eql(60)
+
+      # ensure no exception is raised
+      config.connection
+    end
+  end
+
+  describe '#proxy' do
+    it 'defaults to nil' do
+      expect(config.proxy).to be_nil
+    end
+
+    it 'can be set with proxy=' do
+      config.proxy = "https://my-proxy"
+
+      expect(config.proxy).to eql("https://my-proxy")
+
+      # ensure no exception is raised
+      config.connection
+    end
+
+    it 'can be set with proxy(value)' do
+      config.proxy("https://my-proxy")
+
+      expect(config.proxy).to eql("https://my-proxy")
     end
   end
 

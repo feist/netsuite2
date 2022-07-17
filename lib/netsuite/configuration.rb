@@ -11,13 +11,15 @@ module NetSuite
     end
 
     def attributes
-      @attributes ||= {}
+      Thread.current[:netsuite_gem_attributes] ||= {}
     end
 
     def connection(params={}, credentials={})
       client = Savon.client({
         wsdl: cached_wsdl || wsdl,
+        endpoint: endpoint,
         read_timeout: read_timeout,
+        open_timeout: open_timeout,
         namespaces: namespaces,
         soap_header: auth_header(credentials).update(soap_header),
         pretty_print_xml: true,
@@ -25,6 +27,7 @@ module NetSuite
         logger: logger,
         log_level: log_level,
         log: !silent, # turn off logging entirely if configured
+        proxy: proxy,
       }.update(params))
       cache_wsdl(client)
       return client
@@ -48,11 +51,11 @@ module NetSuite
     end
 
     def wsdl_cache
-      @wsdl_cache ||= {}
+      Thread.current[:netsuite_gem_wsdl_cache] ||= {}
     end
 
     def clear_wsdl_cache
-      @wsdl_cache = {}
+      Thread.current[:netsuite_gem_wsdl_cache] = {}
     end
 
     def cached_wsdl
@@ -91,6 +94,18 @@ module NetSuite
       end
 
       attributes[:api_version] = version
+    end
+
+    def endpoint=(endpoint)
+      attributes[:endpoint] = endpoint
+    end
+
+    def endpoint(endpoint=nil)
+      if endpoint
+        self.endpoint = endpoint
+      else
+        attributes[:endpoint]
+      end
     end
 
     def sandbox=(flag)
@@ -326,6 +341,18 @@ module NetSuite
       end
     end
 
+    def open_timeout=(timeout)
+      attributes[:open_timeout] = timeout
+    end
+
+    def open_timeout(timeout = nil)
+      if timeout
+        self.open_timeout = timeout
+      else
+        attributes[:open_timeout]
+      end
+    end
+
     def log=(path)
       attributes[:log] = path
     end
@@ -337,7 +364,10 @@ module NetSuite
 
     def logger(value = nil)
       if value.nil?
-        attributes[:logger] ||= ::Logger.new((log && !log.empty?) ? log : $stdout)
+        # if passed a IO object (like StringIO) `empty?` won't exist
+        valid_log = log && !(log.respond_to?(:empty?) && log.empty?)
+
+        attributes[:logger] ||= ::Logger.new(valid_log ? log : $stdout)
       else
         attributes[:logger] = value
       end
@@ -357,12 +387,25 @@ module NetSuite
     end
 
     def log_level(value = nil)
-      self.log_level = value || :debug
-      attributes[:log_level]
+      self.log_level = value if value
+
+      attributes[:log_level] || :debug
     end
 
     def log_level=(value)
-      attributes[:log_level] ||= value
+      attributes[:log_level] = value
+    end
+
+    def proxy=(proxy)
+      attributes[:proxy] = proxy
+    end
+
+    def proxy(proxy = nil)
+      if proxy
+        self.proxy = proxy
+      else
+        attributes[:proxy]
+      end
     end
   end
 end

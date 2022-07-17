@@ -7,9 +7,18 @@ module NetSuite
     # TODO need structured logger for various statements
 
     def clear_cache!
-      @netsuite_get_record_cache = {}
-      @netsuite_find_record_cache = {}
+      Thread.current[:netsuite_gem_netsuite_get_record_cache] = {}
+      Thread.current[:netsuite_gem_netsuite_find_record_cache] = {}
+
       DataCenter.clear_cache!
+    end
+
+    def netsuite_get_record_cache
+      Thread.current[:netsuite_gem_netsuite_get_record_cache] ||= {}
+    end
+
+    def netsuite_find_record_cache
+      Thread.current[:netsuite_gem_netsuite_find_record_cache] ||= {}
     end
 
     def append_memo(ns_record, added_memo, opts = {})
@@ -78,7 +87,7 @@ module NetSuite
       begin
         count += 1
         yield
-      rescue Exception => e
+      rescue StandardError => e
         exceptions_to_retry = [
           Errno::ECONNRESET,
           Errno::ETIMEDOUT,
@@ -103,6 +112,10 @@ module NetSuite
         exceptions_to_retry << OpenSSL::SSL::SSLErrorWaitReadable if defined?(OpenSSL::SSL::SSLErrorWaitReadable)
 
         # depends on the http library chosen
+        exceptions_to_retry << HTTPClient::TimeoutError if defined?(HTTPClient::TimeoutError)
+        exceptions_to_retry << HTTPClient::ConnectTimeoutError if defined?(HTTPClient::ConnectTimeoutError)
+        exceptions_to_retry << HTTPClient::ReceiveTimeoutError if defined?(HTTPClient::ReceiveTimeoutError)
+        exceptions_to_retry << HTTPClient::SendTimeoutError if defined?(HTTPClient::SendTimeoutError)
         exceptions_to_retry << Excon::Error::Timeout if defined?(Excon::Error::Timeout)
         exceptions_to_retry << Excon::Error::Socket if defined?(Excon::Error::Socket)
 
@@ -115,6 +128,7 @@ module NetSuite
           # https://github.com/stripe/stripe-netsuite/issues/815
           if !e.message.include?("Only one request may be made against a session at a time") &&
             !e.message.include?('java.util.ConcurrentModificationException') &&
+            !e.message.include?('java.lang.NullPointerException') &&
             !e.message.include?('java.lang.IllegalStateException') &&
             !e.message.include?('java.lang.reflect.InvocationTargetException') &&
             !e.message.include?('com.netledger.common.exceptions.NLDatabaseOfflineException') &&
@@ -170,10 +184,14 @@ module NetSuite
       ns_item ||= NetSuite::Utilities.get_record(NetSuite::Records::OtherChargeSaleItem, ns_item_internal_id, opts)
       ns_item ||= NetSuite::Utilities.get_record(NetSuite::Records::OtherChargePurchaseItem, ns_item_internal_id, opts)
       ns_item ||= NetSuite::Utilities.get_record(NetSuite::Records::ServiceSaleItem, ns_item_internal_id, opts)
+      ns_item ||= NetSuite::Utilities.get_record(NetSuite::Records::ServiceResaleItem, ns_item_internal_id, opts)
       ns_item ||= NetSuite::Utilities.get_record(NetSuite::Records::GiftCertificateItem, ns_item_internal_id, opts)
       ns_item ||= NetSuite::Utilities.get_record(NetSuite::Records::KitItem, ns_item_internal_id, opts)
+      ns_item ||= NetSuite::Utilities.get_record(NetSuite::Records::ItemGroup, ns_item_internal_id, opts)
       ns_item ||= NetSuite::Utilities.get_record(NetSuite::Records::SerializedInventoryItem, ns_item_internal_id, opts)
+      ns_item ||= NetSuite::Utilities.get_record(NetSuite::Records::SerializedAssemblyItem, ns_item_internal_id, opts)
       ns_item ||= NetSuite::Utilities.get_record(NetSuite::Records::LotNumberedAssemblyItem, ns_item_internal_id, opts)
+      ns_item ||= NetSuite::Utilities.get_record(NetSuite::Records::LotNumberedInventoryItem, ns_item_internal_id, opts)
 
       if ns_item.nil?
         fail NetSuite::RecordNotFound, "item with ID #{ns_item_internal_id} not found"
@@ -186,11 +204,10 @@ module NetSuite
       opts[:external_id] ||= false
 
       if opts[:cache]
-        @netsuite_get_record_cache ||= {}
-        @netsuite_get_record_cache[record_klass.to_s] ||= {}
+        netsuite_get_record_cache[record_klass.to_s] ||= {}
 
-        if @netsuite_get_record_cache[record_klass.to_s].has_key?(id.to_i)
-          return @netsuite_get_record_cache[record_klass.to_s][id.to_i]
+        if netsuite_get_record_cache[record_klass.to_s].has_key?(id.to_i)
+          return netsuite_get_record_cache[record_klass.to_s][id.to_i]
         end
       end
 
@@ -204,14 +221,14 @@ module NetSuite
         end
 
         if opts[:cache]
-          @netsuite_get_record_cache[record_klass.to_s][id.to_i] = ns_record
+          netsuite_get_record_cache[record_klass.to_s][id.to_i] = ns_record
         end
 
         return ns_record
       rescue ::NetSuite::RecordNotFound
         # log.warn("record not found", ns_record_type: record_klass.name, ns_record_id: id)
         if opts[:cache]
-          @netsuite_get_record_cache[record_klass.to_s][id.to_i] = nil
+          netsuite_get_record_cache[record_klass.to_s][id.to_i] = nil
         end
 
         return nil
@@ -226,10 +243,8 @@ module NetSuite
       # FIXME: Records that have the same name but different types will break
       # the cache
       names.each do |name|
-        @netsuite_find_record_cache ||= {}
-
-        if @netsuite_find_record_cache.has_key?(name)
-          return @netsuite_find_record_cache[name]
+        if netsuite_find_record_cache.has_key?(name)
+          return netsuite_find_record_cache[name]
         end
 
         # sniff for an email-like input; useful for employee/customer searches
@@ -255,7 +270,7 @@ module NetSuite
         }) }
 
         if search.results.first
-          return @netsuite_find_record_cache[name] = search.results.first
+          return netsuite_find_record_cache[name] = search.results.first
         end
       end
 
@@ -274,15 +289,29 @@ module NetSuite
         to_date.
         to_datetime
 
-      offset = 8
-      time = time.new_offset("-08:00")
+      # tzinfo allows us to determine the dst status of the time being passed in
+      # NetSuite requires that the time be passed to the API with the PDT TZ offset
+      # of the time passed in (i.e. not the current TZ offset of PDT)
 
-      if time.to_time.getlocal.dst?
-        offset = 7
+      if defined?(TZInfo)
+        # if no version is defined, less than 2.0
+        # https://github.com/tzinfo/tzinfo/blob/master/CHANGES.md#added
+        if !defined?(TZInfo::VERSION)
+          # https://stackoverflow.com/questions/2927111/ruby-get-time-in-given-timezone
+          offset = TZInfo::Timezone.get("America/Los_Angeles").period_for_utc(time).utc_total_offset_rational
+          time = time.new_offset(offset)
+        else
+          time = TZInfo::Timezone.get("America/Los_Angeles").utc_to_local(time)
+          offset = time.offset
+        end
+      else
+        # if tzinfo is not installed, let's give it our best guess: -7
+        offset = Rational(-7, 24)
         time = time.new_offset("-07:00")
       end
 
-      (time + Rational(offset, 24)).iso8601
+      time = (time + (offset * -1))
+      time.iso8601
     end
 
   end

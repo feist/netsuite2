@@ -5,9 +5,9 @@ require 'netsuite/version'
 require 'netsuite/errors'
 require 'netsuite/utilities'
 require 'netsuite/utilities/data_center'
+require 'netsuite/utilities/strings'
 require 'netsuite/rest/utilities/roles'
 require 'netsuite/rest/utilities/request'
-require 'netsuite/core_ext/string/lower_camelcase'
 
 module NetSuite
   autoload :Configuration, 'netsuite/configuration'
@@ -49,6 +49,7 @@ module NetSuite
 
   module Actions
     autoload :Add,              'netsuite/actions/add'
+    autoload :AttachFile,       'netsuite/actions/attach_file'
     autoload :Delete,           'netsuite/actions/delete'
     autoload :DeleteList,       'netsuite/actions/delete_list'
     autoload :Get,              'netsuite/actions/get'
@@ -82,6 +83,7 @@ module NetSuite
     autoload :BillingScheduleRecurrence,        'netsuite/records/billing_schedule_recurrence'
     autoload :BillingScheduleRecurrenceList,    'netsuite/records/billing_schedule_recurrence_list'
     autoload :Bin,                              'netsuite/records/bin'
+    autoload :BinNumber,                        'netsuite/records/bin_number'
     autoload :BinNumberList,                    'netsuite/records/bin_number_list'
     autoload :BinTransfer,                      'netsuite/records/bin_transfer'
     autoload :BinTransferInventory,             'netsuite/records/bin_transfer_inventory'
@@ -94,6 +96,7 @@ module NetSuite
     autoload :CashRefundItemList,               'netsuite/records/cash_refund_item_list'
     autoload :Campaign,                         'netsuite/records/campaign'
     autoload :Classification,                   'netsuite/records/classification'
+    autoload :CostCategory,                     'netsuite/records/cost_category'
     autoload :CreditMemo,                       'netsuite/records/credit_memo'
     autoload :CreditMemoApply,                  'netsuite/records/credit_memo_apply'
     autoload :CreditMemoApplyList,              'netsuite/records/credit_memo_apply_list'
@@ -111,6 +114,8 @@ module NetSuite
     autoload :CustomerAddressbook,              'netsuite/records/customer_addressbook'
     autoload :CustomerAddressbookList,          'netsuite/records/customer_addressbook_list'
     autoload :CustomerCategory,                 'netsuite/records/customer_category'
+    autoload :CustomerCreditCards,              'netsuite/records/customer_credit_cards'
+    autoload :CustomerCreditCardsList,          'netsuite/records/customer_credit_cards_list'
     autoload :CustomerCurrency,                 'netsuite/records/customer_currency'
     autoload :CustomerCurrencyList,             'netsuite/records/customer_currency_list'
     autoload :CustomerDeposit,                  'netsuite/records/customer_deposit'
@@ -120,14 +125,14 @@ module NetSuite
     autoload :CustomerPayment,                  'netsuite/records/customer_payment'
     autoload :CustomerPaymentApply,             'netsuite/records/customer_payment_apply'
     autoload :CustomerPaymentApplyList,         'netsuite/records/customer_payment_apply_list'
+    autoload :CustomerPaymentCredit,            'netsuite/records/customer_payment_credit'
+    autoload :CustomerPaymentCreditList,        'netsuite/records/customer_payment_credit_list'
     autoload :CustomerPartner,                  'netsuite/records/customer_partner'
     autoload :CustomerRefund,                   'netsuite/records/customer_refund'
     autoload :CustomerRefundApply,              'netsuite/records/customer_refund_apply'
     autoload :CustomerRefundApplyList,          'netsuite/records/customer_refund_apply_list'
     autoload :CustomerRefundDeposit,            'netsuite/records/customer_refund_deposit'
     autoload :CustomerRefundDepositList,        'netsuite/records/customer_refund_deposit_list'
-    autoload :CustomerSubscription,             'netsuite/records/customer_subscription'
-    autoload :CustomerSubscriptionsList,        'netsuite/records/customer_subscriptions_list'
     autoload :CustomerStatus,                   'netsuite/records/customer_status'
     autoload :CustomerPartner,                  'netsuite/records/customer_partner'
     autoload :CustomerSalesTeam,                'netsuite/records/customer_sales_team'
@@ -155,6 +160,9 @@ module NetSuite
     autoload :Duration,                         'netsuite/records/duration'
     autoload :Employee,                         'netsuite/records/employee'
     autoload :EntityCustomField,                'netsuite/records/entity_custom_field'
+    autoload :Estimate,                         'netsuite/records/estimate'
+    autoload :EstimateItem,                     'netsuite/records/estimate_item'
+    autoload :EstimateItemList,                 'netsuite/records/estimate_item_list'
     autoload :File,                             'netsuite/records/file'
     autoload :GiftCertificate,                  'netsuite/records/gift_certificate'
     autoload :GiftCertificateItem,              'netsuite/records/gift_certificate_item'
@@ -184,14 +192,22 @@ module NetSuite
     autoload :Invoice,                          'netsuite/records/invoice'
     autoload :InvoiceItem,                      'netsuite/records/invoice_item'
     autoload :InvoiceItemList,                  'netsuite/records/invoice_item_list'
+    autoload :ItemAvailability,                 'netsuite/records/item_availability'
     autoload :ItemFulfillment,                  'netsuite/records/item_fulfillment'
     autoload :ItemFulfillmentItem,              'netsuite/records/item_fulfillment_item'
     autoload :ItemFulfillmentItemList,          'netsuite/records/item_fulfillment_item_list'
     autoload :ItemFulfillmentPackage,           'netsuite/records/item_fulfillment_package'
     autoload :ItemFulfillmentPackageList,       'netsuite/records/item_fulfillment_package_list'
+    autoload :ItemFulfillmentPackageFedEx,      'netsuite/records/item_fulfillment_package_fed_ex'
+    autoload :ItemFulfillmentPackageUps,        'netsuite/records/item_fulfillment_package_ups'
+    autoload :ItemFulfillmentPackageUsps,       'netsuite/records/item_fulfillment_package_usps'
+    autoload :ItemFulfillmentPackageFedExList,  'netsuite/records/item_fulfillment_package_fed_ex_list'
+    autoload :ItemFulfillmentPackageUpsList,    'netsuite/records/item_fulfillment_package_ups_list'
+    autoload :ItemFulfillmentPackageUspsList,   'netsuite/records/item_fulfillment_package_usps_list'
     autoload :ItemGroup,                        'netsuite/records/item_group'
     autoload :ItemMember,                       'netsuite/records/item_member'
     autoload :ItemMemberList,                   'netsuite/records/item_member_list'
+    autoload :ItemOptionCustomField,            'netsuite/records/item_option_custom_field'
     autoload :ItemReceipt,                      'netsuite/records/item_receipt'
     autoload :ItemReceiptItemList,              'netsuite/records/item_receipt_item_list'
     autoload :ItemReceiptItem,                  'netsuite/records/item_receipt_item'
@@ -206,13 +222,16 @@ module NetSuite
     autoload :Location,                         'netsuite/records/location'
     autoload :LocationsList,                    'netsuite/records/locations_list'
     autoload :LotNumberedAssemblyItem,          'netsuite/records/lot_numbered_assembly_item'
+    autoload :LotNumberedInventoryItem,         'netsuite/records/lot_numbered_inventory_item'
     autoload :MatrixOptionList,                 'netsuite/records/matrix_option_list'
     autoload :MemberList,                       'netsuite/records/member_list'
+    autoload :Message,                          'netsuite/records/message'
     autoload :NonInventorySaleItem,             'netsuite/records/non_inventory_sale_item'
     autoload :NonInventoryPurchaseItem,         'netsuite/records/non_inventory_purchase_item'
     autoload :NonInventoryResaleItem,           'netsuite/records/non_inventory_resale_item'
     autoload :Note,                             'netsuite/records/note'
     autoload :NoteType,                         'netsuite/records/note_type'
+    autoload :NullFieldList,                    'netsuite/records/null_field_list'
     autoload :Opportunity,                      'netsuite/records/opportunity'
     autoload :OpportunityItem,                  'netsuite/records/opportunity_item'
     autoload :OpportunityItemList,              'netsuite/records/opportunity_item_list'
@@ -259,9 +278,12 @@ module NetSuite
     autoload :SerializedInventoryItemLocationsList,       'netsuite/records/serialized_inventory_item_locations_list'
     autoload :ShipAddress,                      'netsuite/records/ship_address'
     autoload :SiteCategory,                     'netsuite/records/site_category'
+    autoload :Subscription,                     'netsuite/records/subscription'
+    autoload :SubscriptionsList,                'netsuite/records/subscriptions_list'
     autoload :Subsidiary,                       'netsuite/records/subsidiary'
     autoload :SubtotalItem,                     'netsuite/records/subtotal_item'
     autoload :SupportCase,                      'netsuite/records/support_case'
+    autoload :SupportCaseType,                  'netsuite/records/support_case_type'
     autoload :TaxType,                          'netsuite/records/tax_type'
     autoload :TaxGroup,                         'netsuite/records/tax_group'
     autoload :Task,                             'netsuite/records/task'
@@ -273,6 +295,8 @@ module NetSuite
     autoload :TransferOrder,                    'netsuite/records/transfer_order'
     autoload :TransferOrderItemList,            'netsuite/records/transfer_order_item_list'
     autoload :TransferOrderItem,                'netsuite/records/transfer_order_item'
+    autoload :Translation,                      'netsuite/records/translation'
+    autoload :TranslationList,                  'netsuite/records/translation_list'
     autoload :UnitsType,                        'netsuite/records/units_type'
     autoload :UnitsTypeUomList,                 'netsuite/records/units_type_uom_list'
     autoload :UnitsTypeUom,                     'netsuite/records/units_type_uom'
@@ -290,6 +314,8 @@ module NetSuite
     autoload :VendorCreditItemList,             'netsuite/records/vendor_credit_item_list'
     autoload :VendorCreditExpense,              'netsuite/records/vendor_credit_expense'
     autoload :VendorCreditExpenseList,          'netsuite/records/vendor_credit_expense_list'
+    autoload :VendorCurrencyList,               'netsuite/records/vendor_currency_list'
+    autoload :VendorCurrency,                   'netsuite/records/vendor_currency'
     autoload :VendorReturnAuthorization,        'netsuite/records/vendor_return_authorization'
     autoload :VendorReturnAuthorizationItem,    'netsuite/records/vendor_return_authorization_item'
     autoload :VendorReturnAuthorizationItemList, 'netsuite/records/vendor_return_authorization_item_list'
@@ -308,25 +334,6 @@ module NetSuite
 
   def self.configure(&block)
     NetSuite::Configuration.instance_eval(&block)
-  end
-
-  def self.configure_from_env(&block)
-    NetSuite.configure do
-      reset!
-
-      email         ENV['NETSUITE_EMAIL']     unless ENV['NETSUITE_EMAIL'].nil?
-      password      ENV['NETSUITE_PASSWORD']  unless ENV['NETSUITE_PASSWORD'].nil?
-      account       ENV['NETSUITE_ACCOUNT']   unless ENV['NETSUITE_ACCOUNT'].nil?
-      role          ENV['NETSUITE_ROLE']      unless ENV['NETSUITE_ROLE'].nil?
-      api_version   ENV['NETSUITE_API']       unless ENV['NETSUITE_API'].nil?
-      sandbox       (ENV['NETSUITE_PRODUCTION'].nil? || ENV['NETSUITE_PRODUCTION'] != 'true')
-      wsdl          ENV['NETSUITE_WSDL']      unless ENV['NETSUITE_WSDL'].nil?
-      silent        (!ENV['NETSUITE_SILENT'].nil? && ENV['NETSUITE_SILENT'] == 'true')
-
-      read_timeout  100_000
-    end
-
-    self.configure(&block) if block
   end
 
 end

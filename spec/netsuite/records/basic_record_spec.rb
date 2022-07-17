@@ -1,6 +1,7 @@
 require 'spec_helper'
 
 describe 'basic records' do
+  # all records with internal IDs should be added to this list
   let(:basic_record_list) {
     [
       NetSuite::Records::Currency,
@@ -25,6 +26,7 @@ describe 'basic records' do
       NetSuite::Records::CustomerDeposit,
       NetSuite::Records::NonInventoryPurchaseItem,
       NetSuite::Records::NonInventoryResaleItem,
+      NetSuite::Records::LotNumberedInventoryItem,
       NetSuite::Records::TaxGroup,
       NetSuite::Records::Folder,
       NetSuite::Records::CustomerCategory,
@@ -50,6 +52,7 @@ describe 'basic records' do
       NetSuite::Records::SerializedInventoryItem,
       NetSuite::Records::DepositApplication,
       NetSuite::Records::InventoryAdjustment,
+      NetSuite::Records::Vendor,
       NetSuite::Records::VendorReturnAuthorization,
       NetSuite::Records::AssemblyBuild,
       NetSuite::Records::AssemblyUnbuild,
@@ -62,6 +65,7 @@ describe 'basic records' do
       NetSuite::Records::BinTransfer,
       NetSuite::Records::SerializedAssemblyItem,
       NetSuite::Records::CustomerStatus,
+      NetSuite::Records::CustomerPayment,
       NetSuite::Records::TransactionBodyCustomField,
       NetSuite::Records::TransactionColumnCustomField,
       NetSuite::Records::EntityCustomField
@@ -109,8 +113,12 @@ describe 'basic records' do
 
       if !sublist_fields.empty?
         sublist_fields.each do |sublist_field|
+          sublist = record_instance.send(sublist_field)
+
           # TODO make a sublist entry with some fields valid for that sublist item
-          record_instance.send(sublist_field) << {}
+          sublist << {}
+
+          expect(sublist.send(sublist.sublist_key).count).to be(1)
         end
       end
 

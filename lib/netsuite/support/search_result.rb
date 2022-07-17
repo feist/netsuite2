@@ -29,8 +29,19 @@ module NetSuite
         if @total_records > 0
           if response.body.has_key?(:record_list)
             # basic search results
-            record_list = response.body[:record_list][:record]
-            record_list = [record_list] unless record_list.is_a?(Array)
+
+            #  `recordList` node can contain several nested `record` nodes, only one node or be empty
+            #  so we have to handle all these cases:
+            #    * { record_list: nil }
+            #    * { record_list: { record: => {...} } }
+            #    * { record_list: { record: => [{...}, {...}, ...] } }
+            record_list = if response.body[:record_list].nil?
+              []
+            elsif response.body[:record_list][:record].is_a?(Array)
+              response.body[:record_list][:record]
+            else
+              [response.body[:record_list][:record]]
+            end
 
             record_list.each do |record|
               results << result_class.new(record)
@@ -41,9 +52,6 @@ module NetSuite
             record_list = [record_list] unless record_list.is_a?(Array)
 
             record_list.each do |record|
-              # TODO because of customFieldList we need to either make this recursive
-              #      or handle the customFieldList as a special case
-
               record.each_pair do |search_group, search_data|
                 # skip all attributes: look for :basic and all :xxx_join
                 next if search_group.to_s.start_with?('@')
@@ -52,7 +60,25 @@ module NetSuite
                   # all return values are wrapped in a <SearchValue/>
                   # extract the value from <SearchValue/> to make results easier to work with
 
-                  if v.is_a?(Hash) && v.has_key?(:search_value)
+                  if k == :custom_field_list
+                    # Here's an example of a response
+
+                    # <platformCommon:customFieldList>
+                    #   <platformCore:customField internalId="1756" scriptId="custitem_stringfield" xsi:type="platformCore:SearchColumnStringCustomField">
+                    #     <platformCore:searchValue>sample string value</platformCore:searchValue>
+                    #   </platformCore:customField>
+                    #   <platformCore:customField internalId="1713" scriptId="custitem_apcategoryforsales" xsi:type="platformCore:SearchColumnSelectCustomField">
+                    #     <platformCore:searchValue internalId="4" typeId="464"/>
+                    #   </platformCore:customField>
+                    # </platformCommon:customFieldList>
+
+                    custom_field_list = v.fetch(:custom_field)
+                    custom_field_list = [custom_field_list] unless custom_field_list.is_a?(Array)
+                    record[search_group][k][:custom_field] = custom_field_list.map do |custom_field|
+                      custom_field[:value] = custom_field.fetch(:search_value)
+                      custom_field
+                    end
+                  elsif v.is_a?(Hash) && v.has_key?(:search_value)
                     # Here's an example of a record ref and string response
 
                     # <platformCommon:entity>
@@ -76,6 +102,10 @@ module NetSuite
 
               if record[:basic][:internal_id]
                 record[:basic][:internal_id] = record[:basic][:internal_id][:@internal_id]
+              end
+
+              if record[:basic][:external_id]
+                record[:basic][:external_id] = record[:basic][:external_id][:@external_id]
               end
 
               result_wrapper = result_class.new(record.delete(:basic))

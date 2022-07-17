@@ -7,7 +7,7 @@ module NetSuite
       include Support::Actions
       include Namespaces::ListAcct
 
-      actions :get, :get_list, :add, :update, :delete, :upsert, :search
+      actions :get, :get_deleted, :get_list, :add, :update, :update_list, :delete, :upsert, :search
 
       attr_reader   :internal_id
       attr_accessor :external_id
@@ -52,11 +52,11 @@ module NetSuite
                   :units_type, :sales_tax_code, :sale_unit, :tax_schedule, :parent
 
       field :custom_field_list, CustomFieldList
-      # :pricing_matrix,
-      # :translations_list,
+      field :pricing_matrix, PricingMatrix
+      field :translations_list, TranslationList
       # :matrix_option_list,
       # :item_options_list
-      # :subsidiary_list,
+      field :subsidiary_list, RecordRefList
 
       def initialize(attributes = {})
         @internal_id = attributes.delete(:internal_id) || attributes.delete(:@internal_id)
